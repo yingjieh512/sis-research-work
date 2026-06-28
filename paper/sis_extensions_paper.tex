@@ -1,0 +1,191 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{enumitem}
+
+\title{Accelerating and Stabilizing Sufficient Input Subsets for Neural Network Explainability}
+\author{Yingjie Huang\\Department of Computer Science, University of California, Los Angeles\\\texttt{yingjieh512@g.ucla.edu}}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Sufficient Input Subsets (SIS) explain a black-box prediction by identifying sparse observed feature sets that keep model confidence above a user-defined threshold. This technical report documents an extension of Google Research's \texttt{sufficient\_input\_subsets} implementation with SHAP-inspired acceleration, Probabilistic SIS, Hierarchical SIS, and stability metrics. The implementation preserves compatibility with the original \texttt{sis\_collection} API where practical and adds diagnostics for runtime, batched calls, individual model evaluations, subset size, sufficiency score, and stability. The current measured benchmark is a deterministic 8 by 8 synthetic image classifier. Original SIS used 3974 individual model evaluations, while SHAP-guided SIS used 142 individual evaluations with the same final subset size of 7 and final sufficiency score of 0.9997, corresponding to a measured 96.43\% reduction in individual model evaluations on this benchmark. This is evidence for the implemented benchmark, not a universal claim across all datasets and neural networks.
+\end{abstract}
+
+\section{Introduction}
+Sufficient Input Subsets were introduced by Carter et al. as local explanations that identify feature subsets sufficient for a model decision \cite{carter2018sis}. The Google Research implementation provides a compact NumPy reference implementation \cite{googlesis}. The method is interpretable because a subset is not merely assigned a score; it must satisfy a model-confidence constraint. The practical limitation is cost: baseline SIS performs iterative candidate evaluation during backward selection.
+
+This project extends the original implementation with four engineering additions: SHAP-inspired feature ranking, probabilistic sampling, hierarchical coarse-to-fine explanations, and stability metrics. The goal is not to replace the original algorithm, but to preserve its semantics while making it easier to run and explain in image-style settings.
+
+\section{Background: Sufficient Input Subsets}
+Let $f(x)$ be a black-box score for a target class, $x$ be the input, $x_{\mathrm{masked}}$ be a fully masked baseline, and $\tau$ be the confidence threshold. For a boolean mask $m$, $x_m$ keeps observed features where $m_i=\mathrm{True}$ and replaces the rest with the baseline. SIS searches for masks satisfying:
+\[
+f(x_m) \geq \tau.
+\]
+The explanation is local because it explains one prediction for one input.
+
+The original implementation exposes \texttt{SISResult}, \texttt{find\_sis}, \texttt{sis\_collection}, and mask helpers. The mask convention is preserved: \texttt{True} means present and \texttt{False} means masked. Broadcastable masks allow row, column, channel, or region-level explanations.
+
+\section{Problem Statement}
+The project addresses three limitations. First, baseline SIS can require many model evaluations. Second, one deterministic SIS can hide uncertainty when multiple feature subsets are sufficient. Third, pixel-level explanations can be too granular while coarse masks can hide useful detail.
+
+\section{Methodology}
+\subsection{Baseline SIS}
+Baseline SIS is the original \texttt{sis.sis\_collection} procedure. It repeatedly performs backward selection, evaluates candidate one-feature removals, recovers a sufficient subset, removes that subset, and continues until no further SIS exists.
+
+\subsection{SHAP-guided SIS acceleration}
+The public wrapper is \texttt{shap\_guided\_sis\_collection}. It first estimates feature or feature-group importance. If SHAP is available, singleton-feature KernelSHAP can be attempted for small inputs. Otherwise the default fallback is perturbation-based:
+\[
+\mathrm{importance}(g) = f(x_{\mathrm{current}}) - f(x_{\mathrm{current}}\ \mathrm{with}\ g\ \mathrm{masked}).
+\]
+Features are ranked by confidence drop. The algorithm adds high-ranked groups until the threshold is reached and then prunes removable groups while preserving sufficiency. It supports batched scoring, masked-input memoization, feature groups, and diagnostics.
+
+Overhead reduction is computed as:
+\[
+100 \cdot \frac{\mathrm{baseline\ evals} - \mathrm{guided\ evals}}{\mathrm{baseline\ evals}}.
+\]
+Wall-clock reduction is computed analogously using runtimes.
+
+\subsection{Probabilistic SIS}
+Probabilistic SIS samples multiple plausible explanations by injecting reproducible noise into feature rankings. It estimates the inclusion probability for each feature:
+\[
+P_i = \frac{\#\{\mathrm{sampled\ masks\ containing\ feature}\ i\}}{\#\{\mathrm{samples}\}}.
+\]
+The result includes sampled SIS collections, an inclusion probability map, mean subset size, subset-size variance, confidence summaries, and pairwise stability.
+
+\subsection{Hierarchical SIS}
+Hierarchical SIS starts with coarse feature groups and refines selected regions. Grid and pixel modes are implemented without heavy dependencies. A typical hierarchy is 4 by 4 regions, 8 by 8 regions, and a final pixel-level explanation. The current synthetic benchmark uses levels $(2,4,8)$ on an 8 by 8 image.
+
+\subsection{Stability metrics}
+The project implements mask IoU, mask F1, subset-size variance, confidence retention, perturbation stability, and adversarial sensitivity summaries. IoU is
+\[
+\frac{|A \cap B|}{|A \cup B|},
+\]
+and F1 is
+\[
+\frac{2TP}{2TP + FP + FN}.
+\]
+These metrics provide a baseline for robustness analysis, but the current code does not run a full FGSM or PGD adversarial benchmark.
+
+\section{Experimental Setup}
+The current environment uses Python 3.9.13, NumPy 1.25.2, scikit-learn 1.3.0, and matplotlib 3.8.2. Hardware was not captured and should be filled with \texttt{[RUN HARDWARE INSPECTION TO FILL THIS VALUE]} if needed.
+
+The current benchmark is a deterministic 8 by 8 synthetic image classifier with zero masking and threshold 0.75. The current demo uses sklearn digits, 8 by 8 grayscale images, stratified train/test split, pixels scaled to $[0,1]$, zero masking, and logistic regression. Recommended neural-network experiments include a digits MLP, digits CNN, MNIST LeNet-style CNN, optional Fashion-MNIST, and optional CIFAR-10.
+
+\section{Results}
+\subsection{Dataset and model summary}
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{llllll}
+\toprule
+Dataset & Shape & Model & Accuracy & Samples & Threshold \\
+\midrule
+Synthetic benchmark & 8 by 8 & deterministic confidence function & N/A & 1 & 0.75 \\
+sklearn digits demo & 8 by 8 & logistic regression & not recorded & 1 & 0.8497 \\
+sklearn digits MLP & 64 or 1 by 8 by 8 & recommended MLP & [RUN] & [RUN] & 0.8 \\
+MNIST & 1 by 28 by 28 & recommended LeNet CNN & [RUN] & [RUN] & 0.8 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Runtime and overhead}
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lrrrrrr}
+\toprule
+Method & Runtime & Evals & Calls & Size & Score & Reduction \\
+\midrule
+Original SIS & 0.0051 & 3974 & 128 & 7 & 0.9997 & 0.00\% \\
+SHAP-guided SIS & 0.0016 & 142 & 19 & 7 & 0.9997 & 96.43\% \\
+Probabilistic SIS & 0.0081 & 715 & 100 & 8 & 0.9999 & 82.01\% \\
+Hierarchical SIS & 0.0028 & 129 & 46 & 7 & 0.9997 & 96.75\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For SHAP-guided SIS, the individual-evaluation reduction is:
+\[
+100 \cdot \frac{3974 - 142}{3974} = 96.43\%.
+\]
+This supports the overhead reduction claim for the current synthetic benchmark. It does not prove the same reduction on larger neural networks.
+
+\subsection{Stability metrics}
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lllll}
+\toprule
+Method & IoU/stability & F1 & Subset variance & Adv. sensitivity \\
+\midrule
+Original SIS & 0.8333 & [RUN] & [RUN] & [RUN] \\
+SHAP-guided SIS & 0.7500 & [RUN] & [RUN] & [RUN] \\
+Probabilistic SIS & 0.8333; sampled IoU 0.8000 & [RUN] & 0.0000 & [RUN] \\
+Hierarchical SIS & 0.7500 & [RUN] & [RUN] & [RUN] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Ablation Studies}
+The code contains batching, caching, and guidance machinery, but a full ablation runner is not yet implemented. The current SHAP-guided result represents batching plus caching plus guidance. Future ablations should isolate guidance only, batching only, caching only, and all components together.
+
+\section{Qualitative Visualizations}
+The current demo saves images for the original input, baseline SIS mask, SHAP-guided SIS mask, probabilistic inclusion heatmap, hierarchical regions, and perturbation stability plot. These are stored under \texttt{sufficient\_input\_subsets/results/}.
+
+\section{Discussion}
+The measured result shows that ranking features before SIS search can substantially reduce evaluations on a controlled image-style benchmark while preserving sufficiency. Probabilistic SIS exposes uncertainty through inclusion probabilities, and Hierarchical SIS makes explanations available at multiple spatial scales. Stability metrics connect SIS explanations to robustness analysis by measuring drift under perturbations.
+
+\section{Limitations}
+The current benchmark is synthetic. The digits demo uses logistic regression rather than a neural network. MNIST, Fashion-MNIST, CIFAR-10, MLP, CNN, and ResNet experiments are recommended but not currently measured. Exact SHAP is optional and not required by the default path. Full adversarial attack experiments have not been run.
+
+\section{Future Work}
+Future work should add dataset and model CLI flags, implement digits MLP/CNN experiments, add MNIST and Fashion-MNIST support, implement ablations, compare masking baselines, and evaluate adversarial attacks such as FGSM or PGD.
+
+\section{Conclusion}
+This project extends SIS into a practical research-engineering framework with acceleration, uncertainty estimation, multi-scale explanations, and stability metrics. The strongest measured result is a 96.43\% reduction in individual model evaluations on the current synthetic benchmark. Broader neural-network claims should be made only after the recommended experiments are run.
+
+\section*{Reproducibility Commands}
+\begin{verbatim}
+python -m unittest discover -s sufficient_input_subsets/tests -p test*.py
+python -m sufficient_input_subsets.sis_test
+python -m sufficient_input_subsets.benchmark_sis
+python -m sufficient_input_subsets.vision_demo --n_probabilistic_samples 3
+\end{verbatim}
+
+\begin{thebibliography}{9}
+\bibitem{carter2018sis}
+Brandon Carter, Jonas Mueller, Siddhartha Jain, and David K. Gifford.
+\newblock What made you do this? Understanding black-box decisions with sufficient input subsets.
+\newblock arXiv:1810.03805, 2018.
+\newblock \url{https://arxiv.org/abs/1810.03805}
+
+\bibitem{googlesis}
+Google Research Authors.
+\newblock \texttt{sufficient\_input\_subsets} implementation in \texttt{google-research}.
+\newblock \url{https://github.com/google-research/google-research/tree/master/sufficient_input_subsets}
+
+\bibitem{lundberg2017shap}
+Scott M. Lundberg and Su-In Lee.
+\newblock A Unified Approach to Interpreting Model Predictions.
+\newblock Advances in Neural Information Processing Systems 30, 2017.
+\newblock \url{https://proceedings.neurips.cc/paper/2017/hash/8a20a8621978632d76c43dfd28b67767-Abstract.html}
+
+\bibitem{pedregosa2011sklearn}
+Fabian Pedregosa et al.
+\newblock Scikit-learn: Machine Learning in Python.
+\newblock Journal of Machine Learning Research, 12:2825-2830, 2011.
+\newblock \url{https://jmlr.org/papers/v12/pedregosa11a.html}
+
+\bibitem{goodfellow2014adversarial}
+Ian J. Goodfellow, Jonathon Shlens, and Christian Szegedy.
+\newblock Explaining and Harnessing Adversarial Examples.
+\newblock arXiv:1412.6572, 2014.
+\newblock \url{https://arxiv.org/abs/1412.6572}
+\end{thebibliography}
+
+\end{document}
