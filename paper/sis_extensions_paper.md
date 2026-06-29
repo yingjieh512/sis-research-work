@@ -568,3 +568,37 @@ To make these commands work, add argparse flags for dataset/model/sample count, 
 [4] Fabian Pedregosa et al. "Scikit-learn: Machine Learning in Python." Journal of Machine Learning Research, 12:2825-2830, 2011. https://jmlr.org/papers/v12/pedregosa11a.html
 
 [5] Ian J. Goodfellow, Jonathon Shlens, and Christian Szegedy. "Explaining and Harnessing Adversarial Examples." arXiv:1412.6572, 2014. https://arxiv.org/abs/1412.6572
+
+## Appendix D. Addendum: Measured Digits MLP Neural-Network Harness
+
+After the initial report draft, the repository added `experiments/run_nn_sis_experiments.py`, a CPU-friendly neural-network experiment harness. The harness trains a sklearn `MLPClassifier` on the sklearn digits dataset and exposes the model through an SIS-compatible black-box scoring function.
+
+Command:
+
+```bash
+python -m experiments.run_nn_sis_experiments --dataset digits --model mlp --max-examples 1 --seed 0 --output-dir results/sis_nn_experiments
+```
+
+Measured output files:
+
+- `results/sis_nn_experiments/results.csv`
+- `results/sis_nn_experiments/results.json`
+
+Measured run metadata:
+
+- Dataset: sklearn digits, 8 by 8 grayscale
+- Model: sklearn MLPClassifier
+- Train accuracy: 0.9911
+- Test accuracy: 0.9733
+- Selected example: test index 187, target class 4
+- Original confidence: 0.9999985
+- SIS threshold: 0.8
+
+| Method | Threshold met | Final confidence | Subset size | Evaluations | f_batch calls | Runtime (s) | Eval reduction | Stability IoU | Stability F1 |
+| --- | :---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Original SIS | yes | 0.999998 | 4 | 7945 | 255 | 0.0432 | 0.00% | 0.6250 | 0.7000 |
+| SHAP-guided SIS | yes | 0.998905 | 3 | 199 | 13 | 0.0035 | 97.50% | 0.5417 | 0.6786 |
+| Probabilistic SIS | yes | 0.998905 | 3 | 600 | 42 | 0.0114 | 92.45% | 0.5417 | 0.6786 |
+| Hierarchical SIS | yes | 0.963973 | 2 | 40 | 23 | 0.0040 | 99.50% | 0.6667 | 0.7500 |
+
+This addendum supersedes earlier statements that no neural-network experiment had been measured. The broader caveats still apply: this is one lightweight sklearn digits MLP run, not MNIST/CIFAR/CNN evidence.

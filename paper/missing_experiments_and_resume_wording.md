@@ -111,3 +111,25 @@ If asked whether the 20 percent speedup is real:
 If asked how this relates to adversarial vulnerability:
 
 "The current contribution is not a full adversarial attack study. It implements explanation drift and sensitivity metrics. The idea is that if small perturbations preserve the label but significantly change the SIS mask, that suggests brittle evidence use and motivates adversarial evaluation."
+
+## Addendum: new measured digits MLP result
+
+The repository now includes and has run `experiments/run_nn_sis_experiments.py` on sklearn digits with `--model mlp --max-examples 1 --seed 0`.
+
+Measured neural-network result:
+
+- Train accuracy: 0.9911
+- Test accuracy: 0.9733
+- Selected example: test index 187, target class 4
+- Original confidence: 0.9999985
+- Threshold: 0.8
+- Original SIS evaluations: 7945
+- SHAP-guided SIS evaluations: 199
+- SHAP-guided evaluation reduction: 97.50 percent
+- SHAP-guided final confidence: 0.998905
+
+Updated safe wording:
+
+"Implemented an SIS-based neural-network explainability framework extending Google Research's SIS code with SHAP-inspired acceleration, probabilistic sampling, hierarchical masks, and stability metrics; validated the framework on a sklearn digits MLP and measured a 97.50 percent reduction in individual model evaluations for SHAP-guided SIS on one high-confidence example while preserving threshold sufficiency."
+
+Still avoid claiming MNIST/CIFAR/CNN/adversarial results until those scripts are run and saved.
