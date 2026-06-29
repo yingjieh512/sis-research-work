@@ -100,3 +100,7 @@ Safe resume wording:
 More conservative resume wording:
 
 "Developed a SIS-based interpretability framework with SHAP-inspired feature ranking, probabilistic and hierarchical explanation variants, and stability metrics; benchmarked reduced model-evaluation overhead on small image-style tasks while preserving sufficiency."
+
+## Addendum: MNIST benchmark wording
+
+A small MNIST benchmark is now measured through `experiments/run_nn_benchmark_suite.py`. The measured run used MNIST loaded via TorchVision/OpenML, average-pooled images to 14 by 14, trained a sklearn MLP on 2,000 examples, evaluated 500 test examples, and explained one selected high-confidence example. SHAP-guided SIS reduced individual evaluations from 56,370 to 405 on that selected example while preserving the 0.8 threshold. This is a downsampled MLP benchmark, not a full MNIST CNN claim.

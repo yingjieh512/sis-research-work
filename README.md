@@ -15,7 +15,7 @@ wrappers around it rather than rewriting the core algorithm.
 - Stability metrics for perturbation robustness
 - Synthetic 8x8 image-style benchmark
 - sklearn digits demo
-- CPU-friendly neural-network experiment harness for sklearn digits + MLP
+- CPU-friendly neural-network experiment harness for sklearn digits and MNIST + MLP
 
 ## Neural-Network Experiment Setup
 
@@ -42,6 +42,21 @@ Outputs:
 If the requested output directory already contains result files, the harness
 creates a timestamped sibling directory instead of silently overwriting it.
 
+
+## Neural-Network Benchmark Suite
+
+To run a small benchmark suite that includes both sklearn digits and MNIST:
+
+```bash
+python -m experiments.run_nn_benchmark_suite --datasets digits,mnist --max-examples 1 --max-iter 80 --mnist-train-subset 2000 --mnist-test-subset 500 --mnist-image-size 14 --stability-perturbations 0 --output-dir results/sis_nn_benchmarks
+```
+
+The suite writes an aggregate CSV, JSON report, and Markdown summary under a
+timestamped directory such as `results/sis_nn_benchmarks/benchmark_suite_*`.
+MNIST is loaded through TorchVision when available, with a scikit-learn OpenML
+fallback. If neither path works, the suite records MNIST as `unavailable`
+instead of fabricating results.
+
 ## Dataset Setup
 
 ### `digits` default
@@ -55,13 +70,18 @@ creates a timestamped sibling directory instead of silently overwriting it.
 - Mask baseline: zero image
 - Example selection: correctly classified high-confidence test examples
 
-### Optional torchvision datasets
+### MNIST and optional torchvision datasets
 
 The harness accepts `--dataset mnist`, `--dataset fashion_mnist`, and
-`--dataset cifar10`, but these require Torch/TorchVision and network/download
-availability. They are handled gracefully with clear errors if dependencies or
-downloads are unavailable. Do not claim results for these datasets until the
-script has been run and outputs have been saved.
+`--dataset cifar10`.
+
+- MNIST can be loaded through TorchVision or, when PyTorch is unavailable,
+  through `sklearn.datasets.fetch_openml("mnist_784")`.
+- The benchmark suite defaults to `--mnist-image-size 14`, which average-pools
+  28x28 MNIST images to 14x14 so baseline SIS remains CPU-friendly.
+- Fashion-MNIST and CIFAR-10 still require Torch/TorchVision and should be
+  claimed only after their scripts complete and save result files.
+- All dataset loaders use a zero image as the masking baseline.
 
 ## Methodology
 
@@ -117,8 +137,28 @@ Measured SIS results:
 | Probabilistic SIS | 600 | 42 | 0.0114 | 3 | 0.998905 | 92.45% |
 | Hierarchical SIS | 40 | 23 | 0.0040 | 2 | 0.963973 | 99.50% |
 
-These are local measured results for this specific lightweight run. They should
-not be presented as broad MNIST/CIFAR/CNN evidence.
+These are local measured results for this specific lightweight run.
+
+### Digits + MNIST benchmark suite
+
+A measured suite run is stored at
+`results/sis_nn_benchmarks/benchmark_suite_20260628_233409/`. It used one
+selected example per dataset, sklearn `MLPClassifier`, threshold `0.8`, zero
+masking, no stability perturbations, and MNIST downsampled to 14x14.
+
+| Dataset | Test accuracy | Method | Evaluations | Runtime (s) | Subset size | Final confidence | Eval reduction |
+| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| digits | 0.9733 | Original SIS | 7945 | 0.0506 | 4 | 0.999998 | 0.00% |
+| digits | 0.9733 | SHAP-guided SIS | 199 | 0.0036 | 3 | 0.998905 | 97.50% |
+| digits | 0.9733 | Probabilistic SIS | 600 | 0.0113 | 3 | 0.998905 | 92.45% |
+| digits | 0.9733 | Hierarchical SIS | 40 | 0.0043 | 2 | 0.963973 | 99.50% |
+| MNIST 14x14 | 0.8940 | Original SIS | 56370 | 0.2341 | 10 | 0.998483 | 0.00% |
+| MNIST 14x14 | 0.8940 | SHAP-guided SIS | 405 | 0.0098 | 6 | 0.994795 | 99.28% |
+| MNIST 14x14 | 0.8940 | Probabilistic SIS | 1218 | 0.0280 | 6 | 0.994795 | 97.84% |
+| MNIST 14x14 | 0.8940 | Hierarchical SIS | 121 | 0.0093 | 2 | 0.821547 | 99.79% |
+
+These are measured small-benchmark results, not broad CNN/CIFAR/adversarial
+claims.
 
 ## Running Tests
 
@@ -129,7 +169,7 @@ python -m sufficient_input_subsets.sis_test
 
 Latest observed status:
 
-- Extension and harness tests: 18 tests passed
+- Extension, harness, and benchmark-suite tests: 20 tests passed
 - Original SIS tests: 18 tests passed
 
 ## Other Runnable Commands
@@ -153,10 +193,11 @@ Implemented and measured:
 - SIS extensions and stability metrics
 - synthetic image-style benchmark
 - sklearn digits MLP neural-network harness
+- downsampled MNIST MLP benchmark suite run
 
 Available as script or future work:
 
-- MNIST/Fashion-MNIST/CIFAR-10 runs
+- Fashion-MNIST/CIFAR-10 runs
 - small CNN path
 - larger multi-example benchmark tables
 - adversarial attacks such as FGSM/PGD

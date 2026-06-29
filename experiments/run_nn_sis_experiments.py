@@ -140,11 +140,100 @@ def load_digits_dataset(seed: int) -> DatasetBundle:
   )
 
 
+
+def average_pool_downsample(images: np.ndarray, target_size: Optional[int]) -> np.ndarray:
+  """Downsamples square image batches with integer-factor average pooling.
+
+  Args:
+    images: Array with shape ``(N, H, W)`` or ``(N, H, W, C)``.
+    target_size: Desired square height/width. ``None`` or non-positive values
+      leave the input unchanged.
+
+  Returns:
+    Downsampled images. The dtype is float because average pooling may create
+    fractional values.
+  """
+  images = np.asarray(images, dtype=float)
+  if target_size is None or int(target_size) <= 0:
+    return images
+  target_size = int(target_size)
+  if images.ndim not in (3, 4):
+    raise ValueError("average_pool_downsample expects image batches with 3 or 4 dimensions.")
+
+  height, width = int(images.shape[1]), int(images.shape[2])
+  if height == target_size and width == target_size:
+    return images
+  if height != width:
+    raise ValueError("Only square image downsampling is supported; got %sx%s." % (height, width))
+  if height % target_size != 0:
+    raise ValueError(
+        "Target size %d must divide the original image size %d." %
+        (target_size, height))
+
+  factor = height // target_size
+  if images.ndim == 3:
+    return images.reshape(
+        images.shape[0], target_size, factor, target_size, factor).mean(axis=(2, 4))
+  return images.reshape(
+      images.shape[0], target_size, factor, target_size, factor, images.shape[-1]).mean(axis=(2, 4))
+
+
+def load_openml_mnist_dataset(
+    seed: int,
+    train_subset: int,
+    test_subset: int,
+    image_size: Optional[int] = None,
+) -> DatasetBundle:
+  """Loads MNIST through scikit-learn/OpenML when TorchVision is unavailable."""
+  from sklearn.datasets import fetch_openml
+
+  try:
+    try:
+      mnist = fetch_openml("mnist_784", version=1, as_frame=False, parser="auto")
+    except TypeError:
+      mnist = fetch_openml("mnist_784", version=1, as_frame=False)
+  except Exception as exc:
+    raise RuntimeError(
+        "Could not load MNIST via sklearn.fetch_openml. Check network/cache "
+        "availability, or install torch/torchvision for the TorchVision path.") from exc
+
+  images = np.asarray(mnist.data, dtype=float).reshape((-1, 28, 28)) / 255.0
+  labels = np.asarray(mnist.target).astype(int)
+  if images.shape[0] >= 70000:
+    x_train_all, y_train_all = images[:60000], labels[:60000]
+    x_test_all, y_test_all = images[60000:], labels[60000:]
+  else:
+    split = int(0.85 * images.shape[0])
+    x_train_all, y_train_all = images[:split], labels[:split]
+    x_test_all, y_test_all = images[split:], labels[split:]
+
+  rng = np.random.default_rng(seed)
+  train_indices = rng.choice(
+      x_train_all.shape[0], size=min(train_subset, x_train_all.shape[0]), replace=False)
+  test_indices = rng.choice(
+      x_test_all.shape[0], size=min(test_subset, x_test_all.shape[0]), replace=False)
+  x_train = average_pool_downsample(x_train_all[train_indices], image_size)
+  x_test = average_pool_downsample(x_test_all[test_indices], image_size)
+  preprocessing = "OpenML mnist_784 pixels scaled from 0..255 to 0..1; small random subset"
+  if image_size is not None and int(image_size) > 0:
+    preprocessing += "; average-pooled to %dx%d" % (int(image_size), int(image_size))
+  return DatasetBundle(
+      name="mnist",
+      x_train=x_train,
+      x_test=x_test,
+      y_train=y_train_all[train_indices].astype(int),
+      y_test=y_test_all[test_indices].astype(int),
+      input_shape=tuple(x_train.shape[1:]),
+      n_classes=10,
+      preprocessing=preprocessing,
+  )
+
 def load_torchvision_dataset(
     dataset_name: str,
     seed: int,
     train_subset: int,
     test_subset: int,
+    image_size: Optional[int] = None,
 ) -> DatasetBundle:
   """Loads optional torchvision datasets into small NumPy arrays.
 
@@ -155,6 +244,18 @@ def load_torchvision_dataset(
     import torch  # type: ignore
     from torchvision import datasets, transforms  # type: ignore
   except Exception as exc:
+    if dataset_name == "mnist":
+      try:
+        return load_openml_mnist_dataset(
+            seed=seed,
+            train_subset=train_subset,
+            test_subset=test_subset,
+            image_size=image_size)
+      except RuntimeError as openml_exc:
+        raise RuntimeError(
+            "MNIST could not be loaded through TorchVision or OpenML. "
+            "TorchVision error: %s. OpenML error: %s" %
+            (exc, openml_exc)) from openml_exc
     raise RuntimeError(
         "Torch/TorchVision is required for dataset '%s'. Use '--dataset digits' "
         "for the dependency-light path." % dataset_name) from exc
@@ -173,6 +274,18 @@ def load_torchvision_dataset(
     train_ds = dataset_map[dataset_name](root=str(root), train=True, download=True, transform=transform)
     test_ds = dataset_map[dataset_name](root=str(root), train=False, download=True, transform=transform)
   except Exception as exc:
+    if dataset_name == "mnist":
+      try:
+        return load_openml_mnist_dataset(
+            seed=seed,
+            train_subset=train_subset,
+            test_subset=test_subset,
+            image_size=image_size)
+      except RuntimeError as openml_exc:
+        raise RuntimeError(
+            "MNIST could not be loaded through TorchVision or OpenML. "
+            "TorchVision error: %s. OpenML error: %s" %
+            (exc, openml_exc)) from openml_exc
     raise RuntimeError(
         "Could not download/load '%s'. Check network availability or use digits." %
         dataset_name) from exc
@@ -197,6 +310,11 @@ def load_torchvision_dataset(
 
   x_train, y_train = collect(train_ds, train_indices)
   x_test, y_test = collect(test_ds, test_indices)
+  x_train = average_pool_downsample(x_train, image_size)
+  x_test = average_pool_downsample(x_test, image_size)
+  preprocessing = "torchvision ToTensor values in 0..1; small random subset"
+  if image_size is not None and int(image_size) > 0:
+    preprocessing += "; average-pooled to %dx%d" % (int(image_size), int(image_size))
   return DatasetBundle(
       name=dataset_name,
       x_train=x_train,
@@ -205,7 +323,7 @@ def load_torchvision_dataset(
       y_test=y_test,
       input_shape=tuple(x_train.shape[1:]),
       n_classes=10,
-      preprocessing="torchvision ToTensor values in 0..1; small random subset",
+      preprocessing=preprocessing,
   )
 
 
@@ -216,7 +334,8 @@ def load_dataset(args: argparse.Namespace) -> DatasetBundle:
       args.dataset,
       seed=args.seed,
       train_subset=args.train_subset,
-      test_subset=args.test_subset)
+      test_subset=args.test_subset,
+      image_size=args.image_size)
 
 
 def train_mlp_model(dataset: DatasetBundle, seed: int, max_iter: int):
@@ -637,7 +756,11 @@ def write_outputs(
   return csv_path, json_path
 
 
-def make_output_dir(base_output_dir: Optional[str]) -> Path:
+def make_output_dir(
+    base_output_dir: Optional[str],
+    dataset: str = "digits",
+    model: str = "mlp",
+) -> Path:
   stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
   if base_output_dir:
     path = Path(base_output_dir)
@@ -646,7 +769,7 @@ def make_output_dir(base_output_dir: Optional[str]) -> Path:
     if (path / "results.csv").exists() or (path / "results.json").exists():
       return path.parent / ("%s_%s" % (path.name, stamp))
     return path
-  return DEFAULT_RESULTS_DIR / ("digits_mlp_%s" % stamp)
+  return DEFAULT_RESULTS_DIR / ("%s_%s_%s" % (dataset, model, stamp))
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
@@ -675,12 +798,19 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
   parser.add_argument("--skip-hierarchical", action="store_true")
   parser.add_argument("--train-subset", type=int, default=2000)
   parser.add_argument("--test-subset", type=int, default=500)
+  parser.add_argument(
+      "--image-size",
+      type=int,
+      default=None,
+      help=(
+          "Optional square downsample size for torchvision image datasets. "
+          "For example, use 14 for a CPU-friendly MNIST SIS benchmark."))
   return parser.parse_args(argv)
 
 
 def run_experiment(args: argparse.Namespace) -> Dict[str, Any]:
   np.random.seed(args.seed)
-  output_dir = make_output_dir(args.output_dir)
+  output_dir = make_output_dir(args.output_dir, dataset=args.dataset, model=args.model)
   start = time.perf_counter()
   dataset = load_dataset(args)
   model = train_model(args, dataset)

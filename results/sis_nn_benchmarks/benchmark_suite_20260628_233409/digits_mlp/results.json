@@ -1,0 +1,217 @@
+{
+  "metadata": {
+    "dataset": {
+      "name": "digits",
+      "input_shape": [
+        8,
+        8
+      ],
+      "n_classes": 10,
+      "n_train": 1347,
+      "n_test": 450,
+      "preprocessing": "sklearn digits pixels scaled from 0..16 to 0..1",
+      "mask_baseline": "zero"
+    },
+    "model_type": "mlp",
+    "model_library": "sklearn.neural_network.MLPClassifier",
+    "train_accuracy": 0.9910913140311804,
+    "test_accuracy": 0.9733333333333334,
+    "selected_examples": [
+      {
+        "test_index": 187,
+        "input_value": [
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.25,
+            0.9375,
+            0.125,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.8125,
+            0.8125,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.1875,
+            1.0,
+            0.375,
+            0.0,
+            0.625,
+            0.0625
+          ],
+          [
+            0.0,
+            0.0,
+            0.75,
+            0.75,
+            0.0625,
+            0.4375,
+            0.9375,
+            0.0625
+          ],
+          [
+            0.0,
+            0.3125,
+            1.0,
+            0.1875,
+            0.0,
+            0.875,
+            0.625,
+            0.0
+          ],
+          [
+            0.125,
+            1.0,
+            0.8125,
+            0.5,
+            0.5,
+            1.0,
+            0.1875,
+            0.0
+          ],
+          [
+            0.5,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            0.8125,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.4375,
+            1.0,
+            0.375,
+            0.0,
+            0.0
+          ]
+        ],
+        "true_label": 4,
+        "target_class": 4,
+        "confidence": 0.9999985023608338
+      }
+    ],
+    "args": {
+      "dataset": "digits",
+      "model": "mlp",
+      "max_examples": 1,
+      "seed": 0,
+      "threshold_mode": "relative",
+      "threshold": 0.8,
+      "relative_fraction": 0.85,
+      "min_threshold": 0.5,
+      "min_confidence": 0.7,
+      "output_dir": "C:\\Users\\Yingjie Huang\\Downloads\\sis-research-work\\results\\sis_nn_benchmarks\\benchmark_suite_20260628_233409\\digits_mlp",
+      "max_iter": 80,
+      "batch_size": 64,
+      "max_candidates": null,
+      "probabilistic_samples": 3,
+      "probabilistic_noise": 0.05,
+      "probabilistic_mask_threshold": 0.5,
+      "hierarchy_levels": "2,4,8",
+      "hierarchy_mode": "pixel",
+      "stability_perturbations": 0,
+      "stability_noise": 0.02,
+      "skip_probabilistic": false,
+      "skip_hierarchical": false,
+      "train_subset": 2000,
+      "test_subset": 500,
+      "image_size": null
+    },
+    "runtime_sec": 0.8519365,
+    "honesty_note": "These are measured local results for the configured run only. Do not claim broader MNIST/CIFAR/CNN results unless those runs are executed."
+  },
+  "results": [
+    {
+      "dataset": "digits",
+      "model_type": "mlp",
+      "example_index": 187,
+      "target_class": 4,
+      "true_label": 4,
+      "original_confidence": 0.9999985023608338,
+      "threshold": 0.8,
+      "method": "original_sis",
+      "threshold_satisfied": true,
+      "final_confidence": 0.9999982896087847,
+      "subset_size": 4,
+      "individual_model_evaluations": 7945,
+      "batched_function_calls": 255,
+      "wall_clock_runtime_sec": 0.05059579999999986,
+      "evaluation_reduction_vs_baseline_pct": 0.0,
+      "runtime_reduction_vs_baseline_pct": 0.0,
+      "notes": ""
+    },
+    {
+      "dataset": "digits",
+      "model_type": "mlp",
+      "example_index": 187,
+      "target_class": 4,
+      "true_label": 4,
+      "original_confidence": 0.9999985023608338,
+      "threshold": 0.8,
+      "method": "shap_guided_sis",
+      "threshold_satisfied": true,
+      "final_confidence": 0.9989051185807958,
+      "subset_size": 3,
+      "individual_model_evaluations": 199,
+      "batched_function_calls": 13,
+      "wall_clock_runtime_sec": 0.003627099999999883,
+      "evaluation_reduction_vs_baseline_pct": 97.49528005034612,
+      "runtime_reduction_vs_baseline_pct": 92.83122314500433,
+      "notes": ""
+    },
+    {
+      "dataset": "digits",
+      "model_type": "mlp",
+      "example_index": 187,
+      "target_class": 4,
+      "true_label": 4,
+      "original_confidence": 0.9999985023608338,
+      "threshold": 0.8,
+      "method": "probabilistic_sis",
+      "threshold_satisfied": true,
+      "final_confidence": 0.9989051185807958,
+      "subset_size": 3,
+      "individual_model_evaluations": 600,
+      "batched_function_calls": 42,
+      "wall_clock_runtime_sec": 0.011279000000000039,
+      "evaluation_reduction_vs_baseline_pct": 92.44808055380743,
+      "runtime_reduction_vs_baseline_pct": 77.70763581166803,
+      "notes": ""
+    },
+    {
+      "dataset": "digits",
+      "model_type": "mlp",
+      "example_index": 187,
+      "target_class": 4,
+      "true_label": 4,
+      "original_confidence": 0.9999985023608338,
+      "threshold": 0.8,
+      "method": "hierarchical_sis",
+      "threshold_satisfied": true,
+      "final_confidence": 0.9639728125006769,
+      "subset_size": 2,
+      "individual_model_evaluations": 40,
+      "batched_function_calls": 23,
+      "wall_clock_runtime_sec": 0.004309399999999908,
+      "evaluation_reduction_vs_baseline_pct": 99.49653870358716,
+      "runtime_reduction_vs_baseline_pct": 91.48269223927694,
+      "notes": ""
+    }
+  ]
+}

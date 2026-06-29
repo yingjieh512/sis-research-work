@@ -12,6 +12,7 @@ The repository contains:
 - `sufficient_input_subsets/benchmark_sis.py`: deterministic synthetic image benchmark.
 - `sufficient_input_subsets/vision_demo.py`: sklearn digits demo with synthetic fallback.
 - `experiments/run_nn_sis_experiments.py`: CPU-friendly neural-network experiment harness.
+- `experiments/run_nn_benchmark_suite.py`: aggregate digits/MNIST benchmark-suite runner.
 - `paper/`: technical report, LaTeX source, interview cheatsheet, reproducibility checklist, and resume wording notes.
 
 The original SIS API is preserved where practical. The extension methods return
@@ -38,10 +39,10 @@ Default behavior:
 - Threshold mode: relative by default, with default threshold cap `0.8`
 - Stability: Gaussian noise with standard deviation `0.02`, two perturbations by default
 
-Optional dataset arguments exist for `mnist`, `fashion_mnist`, and `cifar10`,
-but those require Torch/TorchVision and successful dataset download. Results for
-those datasets should be claimed only after running the script and saving
-outputs.
+MNIST can be benchmarked with either TorchVision or a scikit-learn OpenML
+fallback. The benchmark suite defaults to 14x14 average-pooled MNIST to keep
+baseline SIS CPU-friendly. Fashion-MNIST and CIFAR-10 still require
+Torch/TorchVision and should be claimed only after their runs complete.
 
 ## Current measured neural-network results
 
@@ -77,6 +78,34 @@ Interpretation:
 - Probabilistic and Hierarchical SIS also satisfied the threshold in this run.
 - These are single-example lightweight results, not broad dataset-level claims.
 
+## Measured digits + MNIST benchmark suite
+
+Command:
+
+```bash
+python -m experiments.run_nn_benchmark_suite --datasets digits,mnist --max-examples 1 --max-iter 80 --mnist-train-subset 2000 --mnist-test-subset 500 --mnist-image-size 14 --stability-perturbations 0 --output-dir results/sis_nn_benchmarks
+```
+
+Output directory:
+
+- `results/sis_nn_benchmarks/benchmark_suite_20260628_233409/`
+
+| Dataset | Test accuracy | Method | Threshold met | Final confidence | Subset size | Evaluations | Runtime (s) | Eval reduction |
+| --- | ---: | --- | :---: | ---: | ---: | ---: | ---: | ---: |
+| digits | 0.9733 | Original SIS | yes | 0.999998 | 4 | 7945 | 0.0506 | 0.00% |
+| digits | 0.9733 | SHAP-guided SIS | yes | 0.998905 | 3 | 199 | 0.0036 | 97.50% |
+| digits | 0.9733 | Probabilistic SIS | yes | 0.998905 | 3 | 600 | 0.0113 | 92.45% |
+| digits | 0.9733 | Hierarchical SIS | yes | 0.963973 | 2 | 40 | 0.0043 | 99.50% |
+| MNIST 14x14 | 0.8940 | Original SIS | yes | 0.998483 | 10 | 56370 | 0.2341 | 0.00% |
+| MNIST 14x14 | 0.8940 | SHAP-guided SIS | yes | 0.994795 | 6 | 405 | 0.0098 | 99.28% |
+| MNIST 14x14 | 0.8940 | Probabilistic SIS | yes | 0.994795 | 6 | 1218 | 0.0280 | 97.84% |
+| MNIST 14x14 | 0.8940 | Hierarchical SIS | yes | 0.821547 | 2 | 121 | 0.0093 | 99.79% |
+
+Interpretation: the MNIST benchmark is measured, but it is intentionally small:
+one selected example, an MLP, 2,000 training samples, 500 test samples, and
+14x14 downsampling. It is not evidence for full-scale MNIST CNN or CIFAR-10
+behavior.
+
 ## Existing synthetic benchmark
 
 The synthetic benchmark remains available:
@@ -96,7 +125,7 @@ described as synthetic rather than as a neural-network result.
 ## Limitations
 
 - The checked neural-network result is one high-confidence sklearn digits MLP example.
-- CNN, MNIST, Fashion-MNIST, and CIFAR-10 results are not yet measured.
+- A small downsampled MNIST MLP benchmark is measured; CNN, Fashion-MNIST, and CIFAR-10 results are not yet measured.
 - The `small_cnn` option is reserved for a future PyTorch path.
 - Stability is measured with small Gaussian perturbations, not a full adversarial attack.
 - Larger multi-example benchmarks should be run before making broad claims.
@@ -115,8 +144,8 @@ Skip slower stochastic/hierarchical methods for a faster baseline-vs-guided pass
 python -m experiments.run_nn_sis_experiments --dataset digits --model mlp --max-examples 10 --skip-probabilistic --skip-hierarchical --stability-perturbations 0
 ```
 
-Attempt MNIST only after installing Torch/TorchVision:
+Run the measured MNIST benchmark path using TorchVision or the OpenML fallback:
 
 ```bash
-python -m experiments.run_nn_sis_experiments --dataset mnist --model mlp --max-examples 1 --train-subset 2000 --test-subset 500
+python -m experiments.run_nn_benchmark_suite --datasets mnist --max-examples 1 --mnist-train-subset 2000 --mnist-test-subset 500 --mnist-image-size 14
 ```

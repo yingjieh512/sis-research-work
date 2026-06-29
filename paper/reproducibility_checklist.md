@@ -152,3 +152,11 @@ Use "implemented" for code that exists and passes tests.
 Use "measured" only for values present in `benchmark_report.json` or `vision_demo_summary.json`.
 
 Use "planned", "recommended", or `[RUN BENCHMARK TO FILL THIS VALUE]` for future experiments.
+
+## Neural-network benchmark suite command
+
+```bash
+python -m experiments.run_nn_benchmark_suite --datasets digits,mnist --max-examples 1 --max-iter 80 --mnist-train-subset 2000 --mnist-test-subset 500 --mnist-image-size 14 --stability-perturbations 0 --output-dir results/sis_nn_benchmarks
+```
+
+The measured run at `results/sis_nn_benchmarks/benchmark_suite_20260628_233409/` completed for both digits and downsampled MNIST. Treat it as a small MLP benchmark, not a CNN or CIFAR result.

@@ -133,3 +133,27 @@ Updated safe wording:
 "Implemented an SIS-based neural-network explainability framework extending Google Research's SIS code with SHAP-inspired acceleration, probabilistic sampling, hierarchical masks, and stability metrics; validated the framework on a sklearn digits MLP and measured a 97.50 percent reduction in individual model evaluations for SHAP-guided SIS on one high-confidence example while preserving threshold sufficiency."
 
 Still avoid claiming MNIST/CIFAR/CNN/adversarial results until those scripts are run and saved.
+
+## Addendum: measured downsampled MNIST MLP benchmark
+
+The repository now also includes and has run `experiments/run_nn_benchmark_suite.py` with `--datasets digits,mnist`. The MNIST path uses TorchVision when available and falls back to `sklearn.datasets.fetch_openml("mnist_784")`; the measured run average-pooled MNIST from 28 by 28 to 14 by 14 for a CPU-friendly SIS baseline.
+
+Measured MNIST result from `results/sis_nn_benchmarks/benchmark_suite_20260628_233409/`:
+
+- Model: sklearn MLPClassifier
+- Train subset: 2,000 examples
+- Test subset: 500 examples
+- Test accuracy: 0.8940
+- Selected example: test index 330, target class 7
+- Original confidence: 0.9997579
+- Threshold: 0.8
+- Original SIS evaluations: 56,370
+- SHAP-guided SIS evaluations: 405
+- SHAP-guided evaluation reduction: 99.28 percent
+- SHAP-guided final confidence: 0.994795
+
+Updated safe wording:
+
+"Implemented an SIS-based neural-network explainability framework extending Google Research's SIS code with SHAP-inspired acceleration, probabilistic sampling, hierarchical masks, and stability metrics; validated the framework on sklearn digits and downsampled MNIST MLP benchmarks, measuring large reductions in individual model evaluations for SHAP-guided SIS while preserving threshold sufficiency on selected high-confidence examples."
+
+Still avoid claiming full MNIST CNN, CIFAR-10, or adversarial-attack results until those experiments are run and saved.

@@ -602,3 +602,36 @@ Measured run metadata:
 | Hierarchical SIS | yes | 0.963973 | 2 | 40 | 23 | 0.0040 | 99.50% | 0.6667 | 0.7500 |
 
 This addendum supersedes earlier statements that no neural-network experiment had been measured. The broader caveats still apply: this is one lightweight sklearn digits MLP run, not MNIST/CIFAR/CNN evidence.
+
+## Appendix E. Addendum: Measured Digits + MNIST Benchmark Suite
+
+The repository now includes `experiments/run_nn_benchmark_suite.py`, which runs the neural-network SIS harness over multiple datasets and writes aggregate CSV, JSON, and Markdown reports. The suite records unavailable datasets explicitly rather than inventing missing results.
+
+Command:
+
+```bash
+python -m experiments.run_nn_benchmark_suite --datasets digits,mnist --max-examples 1 --max-iter 80 --mnist-train-subset 2000 --mnist-test-subset 500 --mnist-image-size 14 --stability-perturbations 0 --output-dir results/sis_nn_benchmarks
+```
+
+Measured output directory:
+
+- `results/sis_nn_benchmarks/benchmark_suite_20260628_233409/`
+
+Benchmark setup:
+
+- digits: sklearn digits, 8 by 8 grayscale, sklearn MLPClassifier, test accuracy 0.9733.
+- MNIST: OpenML/TorchVision MNIST path, 28 by 28 images average-pooled to 14 by 14, 2,000 training samples, 500 test samples, sklearn MLPClassifier, test accuracy 0.8940.
+- Evaluation: one selected high-confidence test example per dataset, threshold 0.8, zero masking, no perturbation-stability probes in this suite run.
+
+| Dataset | Method | Threshold met | Final confidence | Subset size | Evaluations | f_batch calls | Runtime (s) | Evaluation reduction |
+| --- | --- | :---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| digits | Original SIS | yes | 0.999998 | 4 | 7945 | 255 | 0.0506 | 0.00% |
+| digits | SHAP-guided SIS | yes | 0.998905 | 3 | 199 | 13 | 0.0036 | 97.50% |
+| digits | Probabilistic SIS | yes | 0.998905 | 3 | 600 | 42 | 0.0113 | 92.45% |
+| digits | Hierarchical SIS | yes | 0.963973 | 2 | 40 | 23 | 0.0043 | 99.50% |
+| MNIST 14x14 | Original SIS | yes | 0.998483 | 10 | 56370 | 584 | 0.2341 | 0.00% |
+| MNIST 14x14 | SHAP-guided SIS | yes | 0.994795 | 6 | 405 | 23 | 0.0098 | 99.28% |
+| MNIST 14x14 | Probabilistic SIS | yes | 0.994795 | 6 | 1218 | 72 | 0.0280 | 97.84% |
+| MNIST 14x14 | Hierarchical SIS | yes | 0.821547 | 2 | 121 | 28 | 0.0093 | 99.79% |
+
+This addendum supersedes earlier statements that MNIST had not been benchmarked at all. The measured MNIST result is still deliberately modest: it is a one-example, downsampled, MLP-based benchmark rather than a full MNIST CNN study. It should not be described as CIFAR-10 evidence, adversarial evidence, or broad deep-vision evidence.

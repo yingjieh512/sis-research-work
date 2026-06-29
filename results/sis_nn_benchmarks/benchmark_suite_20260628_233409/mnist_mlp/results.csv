@@ -1,0 +1,5 @@
+dataset,model_type,example_index,target_class,true_label,original_confidence,threshold,method,threshold_satisfied,final_confidence,subset_size,individual_model_evaluations,batched_function_calls,wall_clock_runtime_sec,evaluation_reduction_vs_baseline_pct,runtime_reduction_vs_baseline_pct,notes
+mnist,mlp,330,7,7,0.9997579107925141,0.8,original_sis,True,0.9984828167770352,10,56370,584,0.23414299999999955,0.0,0.0,
+mnist,mlp,330,7,7,0.9997579107925141,0.8,shap_guided_sis,True,0.9947950869686724,6,405,23,0.009768600000000127,99.28153273017563,95.82793421114441,
+mnist,mlp,330,7,7,0.9997579107925141,0.8,probabilistic_sis,True,0.9947950869686724,6,1218,72,0.027983700000000056,97.8392762107504,88.0484575665298,
+mnist,mlp,330,7,7,0.9997579107925141,0.8,hierarchical_sis,True,0.8215471682893251,2,121,28,0.009284799999999649,99.7853468156821,96.03456007653456,

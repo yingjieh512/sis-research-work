@@ -11,6 +11,7 @@ from pathlib import Path
 import numpy as np
 
 from experiments import run_nn_sis_experiments as harness
+from experiments import run_nn_benchmark_suite as benchmark_suite
 from sufficient_input_subsets import sis
 
 
@@ -34,6 +35,34 @@ class NNExperimentHarnessTest(unittest.TestCase):
     self.assertEqual(dataset.x_train.ndim, 3)
     self.assertGreaterEqual(float(dataset.x_train.min()), 0.0)
     self.assertLessEqual(float(dataset.x_train.max()), 1.0)
+
+  def test_average_pool_downsample(self):
+    image = np.arange(16, dtype=float).reshape(1, 4, 4)
+    pooled = harness.average_pool_downsample(image, target_size=2)
+
+    expected = np.asarray([[[2.5, 4.5], [10.5, 12.5]]])
+    self.assertEqual(pooled.shape, (1, 2, 2))
+    self.assertTrue(np.allclose(pooled, expected))
+
+  def test_mnist_benchmark_suite_args_use_downsampled_mnist(self):
+    args = benchmark_suite.parse_args([
+        "--datasets", "mnist",
+        "--max-examples", "1",
+        "--mnist-image-size", "14",
+        "--mnist-train-subset", "20",
+        "--mnist-test-subset", "10",
+        "--skip-probabilistic",
+        "--skip-hierarchical",
+    ])
+    argv = benchmark_suite.make_harness_argv(
+        "mnist", args, Path("results/sis_nn_benchmarks/test_mnist"))
+
+    self.assertIn("--dataset", argv)
+    self.assertIn("mnist", argv)
+    self.assertIn("--image-size", argv)
+    self.assertIn("14", argv)
+    self.assertIn("--train-subset", argv)
+    self.assertIn("20", argv)
 
   def test_counting_scoring_function_shapes(self):
     model = FakeProbabilisticModel()

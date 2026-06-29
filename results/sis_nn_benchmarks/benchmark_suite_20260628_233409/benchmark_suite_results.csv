@@ -1,0 +1,9 @@
+dataset,status,method,threshold_satisfied_rate,mean_final_confidence,mean_subset_size,mean_individual_model_evaluations,mean_batched_function_calls,mean_evaluation_reduction_vs_baseline_pct,mean_runtime_sec,notes
+digits,completed,hierarchical_sis,1.0,0.9639728125006769,2.0,40.0,23.0,99.49653870358716,0.004309399999999908,
+digits,completed,original_sis,1.0,0.9999982896087847,4.0,7945.0,255.0,0.0,0.05059579999999986,
+digits,completed,probabilistic_sis,1.0,0.9989051185807958,3.0,600.0,42.0,92.44808055380743,0.011279000000000039,
+digits,completed,shap_guided_sis,1.0,0.9989051185807958,3.0,199.0,13.0,97.49528005034612,0.003627099999999883,
+mnist,completed,hierarchical_sis,1.0,0.8215471682893251,2.0,121.0,28.0,99.7853468156821,0.009284799999999649,
+mnist,completed,original_sis,1.0,0.9984828167770352,10.0,56370.0,584.0,0.0,0.23414299999999955,
+mnist,completed,probabilistic_sis,1.0,0.9947950869686724,6.0,1218.0,72.0,97.8392762107504,0.027983700000000056,
+mnist,completed,shap_guided_sis,1.0,0.9947950869686724,6.0,405.0,23.0,99.28153273017563,0.009768600000000127,
